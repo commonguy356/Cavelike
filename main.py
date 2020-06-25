@@ -1,51 +1,47 @@
 import tcod
 
-from actions import Action, ActionType
-from input_handlers import handle_keys
+from engine import Engine
+from entity import Entity
+from game_map import GameMap
+from input_handlers import EventHandler
 
-def main():
-    screen_width: int = 80
-    screen_height: int = 50
+def main() -> None:
+    screen_width = 80
+    screen_height = 50
 
-    player_x: int = int(screen_width / 2)
-    player_y: int = int(screen_height / 2)
+    map_width = 80
+    map_height = 45
 
-    tcod.console_set_custom_font("arial10x10.png", tcod.FONT_TYPE_GREYSCALE | tcod.FONT_LAYOUT_TCOD)
+    tileset = tcod.tileset.load_tilesheet(
+        "dejavu10x10_gs_tc.png", 32, 8, tcod.tileset.CHARMAP_TCOD
+    )
 
-    with tcod.console_init_root(
-        w=screen_width,
-        h=screen_height,
+    event_handler = EventHandler()
+
+    player = Entity(int(screen_width / 2), int(screen_height / 2), "@", (255, 255, 255))
+    npc = Entity(int(screen_width / 2 - 5), int(screen_height / 2), "@", (255, 255, 0))
+    entities = {npc, player}
+
+    game_map = GameMap(map_width, map_height)
+
+    engine = Engine(entities=entities, event_handler=event_handler, game_map=game_map, player=player)
+
+    with tcod.context.new_terminal(
+        screen_width,
+        screen_height,
+        tileset=tileset,
         title="CAVELIKE",
-        order="F",
-        vsync=True
-    ) as root_console:
+        vsync=True,
+    ) as context:
+        root_console = tcod.Console(screen_width, screen_height, order="F")
         while True:
-            root_console.print(x=player_x, y=player_y, string="@")
+            engine.render(console=root_console, context=context)
 
-            tcod.console_flush()
+            events = tcod.event.wait()
 
-            root_console.clear()
+            engine.handle_events(events)
 
-            for event in tcod.event.wait():
-                if event.type == "QUIT":
-                    raise SystemExit()
 
-                if event.type == "KEYDOWN":
-                    action: [Action, None] = handle_keys(event.sym)
-
-                    if action is None:
-                        continue
-
-                    action_type: ActionType = action.action_type
-
-                    if action_type == ActionType.MOVEMENT:
-                        dx: int = action.kwargs.get("dx", 0)
-                        dy: int = action.kwargs.get("dy", 0)
-
-                        player_x += dx
-                        player_y += dy
-                    elif action_type == ActionType.ESCAPE:
-                        raise SystemExit()
 
 
 
